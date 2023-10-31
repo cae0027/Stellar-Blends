@@ -1,4 +1,3 @@
-# Lawrence Livermore National Laboratory
 
 # Stellar Blend Image Classification
 
