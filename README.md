@@ -22,5 +22,5 @@ The Zwicky Transient Facility (ZTF, https://www.ztf.caltech.edu/) is an extremel
 
 ### Links
 
-* [Original Paper](https://arxiv.org/abs/2104.14581)
+* [MuyGPs: Scalable Gaussian Process Hyperparameter Estimation Using Local Cross-Validation](https://arxiv.org/abs/2104.14581)
 
