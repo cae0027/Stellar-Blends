@@ -151,7 +151,7 @@ techniques = {
               'nthroot_log':nthroot_log,
              }
 # get more rth roots normalization
-roots = np.linspace(0,1,20)
+roots = np.linspace(0,1,30)
 rts = {f"nthroot_{rt:.4}": partial(nthroot,  r=rt) for rt in roots}
 # merge the two dictionaries
 techniques = {**rts, **techniques}
