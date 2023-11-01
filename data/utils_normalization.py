@@ -4,6 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
+from functools import partial
 
 
 cutout_files = pd.read_csv('./stars_and_blends.csv')
@@ -76,7 +77,7 @@ def norm_3(data):
     The same as technique 2, but now min and max are the minimum and maximum pixel value over ALL images
     For each cutout:
     Scale all data between (0, 1) with:
-    𝑛𝑜𝑟𝑚 = (𝑑𝑎𝑡𝑎−𝑚𝑖𝑛𝑎𝑙𝑙)/ (𝑚𝑎𝑥𝑎𝑙𝑙−𝑚𝑖𝑛𝑎𝑙𝑙)
+           𝑛𝑜𝑟𝑚 = (𝑑𝑎𝑡𝑎-𝑚𝑖𝑛𝑎𝑙𝑙)/ (𝑚𝑎𝑥𝑎𝑙𝑙-𝑚𝑖𝑛𝑎𝑙𝑙)
     """
     data_norm = (data - min_pixel_all) / (max_pixel_all - min_pixel_all)
     return data_norm
@@ -141,27 +142,25 @@ def nthroot_log(data, r=0.2):
     data_norm = norm_2((norm_1(abs(data)))) 
     return data_norm**r
 
-techniques = {
-              'norm_1':norm_1, 'norm_2':norm_2, 'norm_3':norm_3, 'norm_4':norm_4, 
-              'norm_5':norm_5,'norm_21':norm_21, 'norm_31':norm_31, 'norm_41':norm_41,
-              'norm_51':norm_51,  'nthroot':nthroot,
-                 'nthroot_log':nthroot_log,
-             }
 
 techniques = {
               'norm_1':norm_1, 'norm_2':norm_2, 'norm_3':norm_3, 'norm_4':norm_4, 
               'norm_5':norm_5,'norm_21':norm_21, 'norm_31':norm_31, 'norm_41':norm_41,
               'norm_51':norm_51,  
-              'nthroot':nthroot,
+              #'nthroot':nthroot,
               'nthroot_log':nthroot_log,
-             
              }
+# get more rth roots normalization
+roots = np.linspace(0,1,20)
+rts = {f"nthroot_{rt}": partial(nthroot,  r=rt) for rt in roots}
+# merge the two dictionaries
+techniques = {**rts, **techniques}
 
 # store names of the normalized csv files in
 norm_data_names = []
 for num, technique in enumerate(techniques):
     star_blend_norm = pd.DataFrame({})
-    for idx, row in tqdm(star_blend.iterrows(), total=star_blend.shape[0], desc='Technique '+str(num+1), leave=True):
+    for idx, row in tqdm(star_blend.iterrows(), total=star_blend.shape[0], desc='Technique '+ str(num+1), leave=True):
         # Separate type and data
         raw_data = row[1:].values
         obj_id = row[:1].values 
@@ -176,6 +175,6 @@ for num, technique in enumerate(techniques):
     plot_data = pd.concat([plot_data, pd.DataFrame({technique: star_blend_norm[:5].to_numpy().flatten()})], axis=1)
 
     # Save to .csv
-    star_blend_norm.to_csv('./data-norm' + technique + '_image_data.csv', header=False, index=False)
-    norm_data_names.append('./data-norm' + technique + '_image_data.csv')
+    star_blend_norm.to_csv('./data-norm/' + technique + '_data.csv', header=False, index=False)
+    norm_data_names.append('./data-norm/' + technique + '_data.csv')
         
