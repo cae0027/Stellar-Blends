@@ -3,14 +3,14 @@
 
 ## Project Summary
 
-The Zwicky Transient Facility (ZTF, https://www.ztf.caltech.edu/) is an extremely wide-field sky survey designed to image a large area of sky at a time. Its main goal is discovering transients in a timely manner (such as supernova, gamma ray bursts, variable stars, asteroids, and exoplanets). While ZTF doesn't have the fidelity desired for many science goals, it has a huge field of view and is gathering large volumes of data, so scientists are looking at how machine learning approaches may be able to extract more information out of the data. One such analysis is the identification of stellar blending, which is where occur when two or more stars look "blended" together in an image. Information about stellar blends is important to the study of dark matter through gravitational lensing, which is distortion of the observation of the universe that relies on understanding what matter is along the line-of-sight. Stellar blends are typically disambiguated through more "expensive" methods, such as spectroscopy, getting resolved images using space-based telescopes, or getting higher resolution images using ground-based telescopes. However, in this project we hope to use data science to create a pipeline to automatically identify stellar blends from low resolution ZTF images. Our group at LLNL has developed a ML method called MuyGPs that has successfully been used disambiguation of star and galaxy images from this survey. In this project, you will learn about this method, but also compare its performance on stellar blend identification to more traditional image classification methods. 
+Stellar blends are a challenge in visualizing celestial bodies and are typically disambiguated through expensive methods. To address this, we propose an automated pipeline to distinguish single stars and blended stars in low resolution images. We apply different normalizations to the data, which are passed as inputs into machine learning methods and to a computationally efficient Gaussian process model (MuyGPs). MuyGPs with $N^{th}$ root local min-max normalization achieves 86\% accuracy (i.e. 12\% above the second-best). Moreover, MuyGPs outperforms the benchmarked models significantly on limited training data. Further, MuyGPs low-confidence predictions can be redirected to a specialist for human-assisted labeling 
 
 ## Project Objectives
 * Data exploration and visualization of the stellar blends
 * Explore possible embedding/normalization before model fitting
 * Binary image classification problem (blended vs. non-blended)
 * Apply MuyGPs, and at least 2 other machine learning methods for image classification of the stellar blending identification
-* Extra credit: simultaneously classify binary star systems from line-of-sight blends and/or quantify uncertainty in estimates
+
 
 ## Key questions to answer
 
