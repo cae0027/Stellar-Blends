@@ -68,7 +68,8 @@ def embedding(data_path=data_path, pltt=False):
             plt.gca().set_aspect('equal', 'datalim')
             axes[i].set_title(columns[i])
     data_name = ''.join(data_path.split('/')[-1].split('.')[:2])
-    plt.savefig('./embed-results/'+data_name, dpi=500)
+    plt.savefig('./max-only/embed-results/'+data_name, dpi=500)
+    plt.savefig('./max-pixel-all/embed-results/'+data_name, dpi=500)
 
     end = perf_counter()
     print(f"Total time taken for embedding a single data is {(end-now)/60} minutes")
@@ -84,15 +85,16 @@ if __name__ == '__main__':
 
     # read normalized data csv file names from the data directory
     # norm_data_names = glob('../data/data-norm/max-only/*.csv')
-    # # sort the names by their numbers
-    # norm_data_names.sort(key=lambda x: x.split('_')[1])
+    norm_data_names = glob('../data/data-norm/max-pixel-all/*.csv')
+    # sort the names by their numbers
+    norm_data_names.sort(key=lambda x: x.split('_')[1])
 
-    # for i,name in enumerate(norm_data_names):
-    #     print(f"Running Iteration {(i+1)/len(norm_data_names)} ================> {name}")
-    #     embedding(data_path=name)
+    for i,name in enumerate(norm_data_names):
+        print(f"Running Iteration {(i+1)/len(norm_data_names)} ================> {name}")
+        embedding(data_path=name)
 
     # run single data file embedding
-    embedding(data_path=data_path)
+    # embedding(data_path=data_path)
 
     end = perf_counter()
     print(f"Total time taken for embedding all normalized data is {(end-now)/60} minutes")
