@@ -5,7 +5,9 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
 from functools import partial
+from time import perf_counter
 
+t_start = perf_counter()
 
 cutout_files = pd.read_csv('./stars_and_blends.csv')
 cutout_files = cutout_files.sample(frac=1).reset_index()
@@ -29,12 +31,13 @@ for idx, row in tqdm(cutout_files.iterrows(),total=cutout_files.shape[0]):
     min_pixel.append(np.min(data_flattened))
     max_pixel.append(np.max(data_flattened))
     
-    star_blend = star_blend.append([np.append(obj_id, data_flattened)], ignore_index=True)
+    # star_blend = star_blend.append([np.append(obj_id, data_flattened)], ignore_index=True)    # pd append deprecated
+    star_blend = pd.concat([star_blend, pd.DataFrame([np.append(obj_id, data_flattened)])], ignore_index=True)
 
 plot_data = pd.concat([plot_data, pd.DataFrame({'raw': data_flattened.to_numpy()})], axis=1)
 star_blend.to_csv('raw_image_data.csv', header=False, index=False)
 
-
+# absolute min and max pixels over all images
 min_pixel_all = np.min(np.abs(min_pixel))
 max_pixel_all = np.max(np.abs(max_pixel))
 
@@ -125,15 +128,20 @@ def norm_5(data):
     data_norm = data_min_subtracted/log_max_pixel
     return data_norm
 
+max_all = input("Please type yes if you want the rth root divided by max over all images: ")
 def nthroot(data, r=0.2):
     """
     For each realization:
     take the rth root of each pixel
     if the rth root is odd, it takes care of -ve pixel values
     normalize by applying norm_2
+    If max_all: Divide by the maximum over all images
     """
-    nthrooth = (data)**(r)
-    data_norm = nthrooth / np.amax(nthrooth)
+    nthrooth = (np.abs(data))**(r)
+    if max_all == 'yes':
+        data_norm = nthrooth / (max_pixel_all)**r
+    else:
+        data_norm = nthrooth / np.amax(nthrooth)
     return data_norm
 
 # log values then nth root
@@ -169,12 +177,19 @@ for num, technique in enumerate(techniques):
         norm_data = techniques[technique](raw_data)
 
         # Append values for current cutout to dataframe
-        star_blend_norm = star_blend_norm.append([np.append(obj_id, norm_data)], ignore_index=True)
+        # star_blend_norm = star_blend_norm.append([np.append(obj_id, norm_data)], ignore_index=True)
+        star_blend_norm = pd.concat([star_blend_norm, pd.DataFrame([np.append(obj_id, norm_data)])], ignore_index=True)
 
     # Append plot data for first 5 images
     plot_data = pd.concat([plot_data, pd.DataFrame({technique: star_blend_norm[:5].to_numpy().flatten()})], axis=1)
 
     # Save to .csv
-    star_blend_norm.to_csv('./data-norm/' + technique + '_data.csv', header=False, index=False)
-    norm_data_names.append('./data-norm/' + technique + '_data.csv')
-        
+    if max_all == 'yes':
+        star_blend_norm.to_csv('./data-norm/max-pixel-all/' + technique + '.csv', header=False, index=False)
+        norm_data_names.append('./data-norm/max-pixel-all/' + technique + '.csv')
+    else:
+        star_blend_norm.to_csv('./data-norm/max-only/' + technique + '.csv', header=False, index=False)
+        norm_data_names.append('./data-norm/max-only/' + technique + '.csv')
+
+t_end = perf_counter()
+print(f"Total time for normalization is {(t_end - t_start)/60} minutes")
