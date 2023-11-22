@@ -4,6 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import random
+from sklearn.preprocessing import StandardScaler
 from functools import partial
 from time import perf_counter
 
@@ -11,35 +12,38 @@ t_start = perf_counter()
 
 cutout_files = pd.read_csv('./stars_and_blends.csv')
 cutout_files = cutout_files.sample(frac=1).reset_index()
-cutout_files.head()
+# cutout_files.head()
 
-# Initialize DataFrame to append each cutout data to
-star_blend = pd.DataFrame({})
 
 # Define lists that each minimum and maximum pixel value will be appended to
 min_pixel = []
 max_pixel = []
-
-# Create a DataFrame to append plotting data to
-plot_data = pd.DataFrame({})
-
-for idx, row in tqdm(cutout_files.iterrows(),total=cutout_files.shape[0]): 
-    obj_id = row['class']
-         
-    data_flattened = row.iloc[3:]
+data_lst = []
+# number of observations
+n = cutout_files.shape[0]
+for i in tqdm(range(n),total=n): 
+    clss = cutout_files.iloc[i, 1]
+    dat = cutout_files.iloc[i, 2:]
+             
+    min_pixel.append(np.min(np.abs(dat)))
+    max_pixel.append(np.max(np.abs(dat)))
     
-    min_pixel.append(np.min(data_flattened))
-    max_pixel.append(np.max(data_flattened))
+    #### collect raw data
     
-    # star_blend = star_blend.append([np.append(obj_id, data_flattened)], ignore_index=True)    # pd append deprecated
-    star_blend = pd.concat([star_blend, pd.DataFrame([np.append(obj_id, data_flattened)])], ignore_index=True)
-
-plot_data = pd.concat([plot_data, pd.DataFrame({'raw': data_flattened.to_numpy()})], axis=1)
-star_blend.to_csv('raw_image_data.csv', header=False, index=False)
+    clsdat = [clss] + list(cutout_files.iloc[i, 2:])
+    data_lst.append(clsdat)
+star_blend = pd.DataFrame(data_lst)
+star_blend = star_blend.iloc[:,1:]      # remove index
+star_blend.to_csv('./data-norm//max-only/raw_image_data.csv', header=False, index=False)
 
 # absolute min and max pixels over all images
 min_pixel_all = np.min(np.abs(min_pixel))
 max_pixel_all = np.max(np.abs(max_pixel))
+
+# standard scaler
+def std_scaler(data):
+    scaled = StandardScaler().fit_transform(data.reshape(-1,1))
+    return scaled.reshape(-1)
 
 def norm_1(data):
     """
@@ -51,6 +55,20 @@ def norm_1(data):
     data_log = np.log10(np.abs(data))
     min_log_data = np.amin(data_log)
     data_norm = data_log - min_log_data
+    return data_norm
+
+def norm_11(data):
+    """
+    For each realization:
+    Take the log of each pixel value
+    Find the minimum pixel value accross the image
+    Subtract that minimum value from each pixel 
+    Divide the result by the max pixel value
+    """
+    data_log = np.log10(np.abs(data))
+    min_log_data = np.amin(data_log)
+    max_log_data = np.amax(data_log)
+    data_norm = (data_log - min_log_data) / max_log_data
     return data_norm
 
 def norm_2(data):
@@ -144,6 +162,21 @@ def nthroot(data, r=0.2):
         data_norm = nthrooth / np.amax(nthrooth)
     return data_norm
 
+def nthroot_min_max(data, r=0.2):
+    """
+    For each realization:
+    take the rth root of each pixel
+    if the rth root is odd, it takes care of -ve pixel values
+    normalize by applying norm_2
+    If max_all: Divide by the maximum over all images
+    """
+    nthrooth = (np.abs(data))**(r)
+    if max_all == 'yes':
+        data_norm = (nthrooth - np.amin(nthrooth)) / (max_pixel_all)**r
+    else:
+        data_norm = (nthrooth - np.amin(nthrooth)) / np.amax(nthrooth)
+    return data_norm
+
 # log values then nth root
 def nthroot_log(data, r=0.2):
     # data_norm = (np.abs(data))**(r)
@@ -151,45 +184,48 @@ def nthroot_log(data, r=0.2):
     return data_norm**r
 
 
-techniques = {
-              'norm_1':norm_1, 'norm_2':norm_2, 'norm_3':norm_3, 'norm_4':norm_4, 
-              'norm_5':norm_5,'norm_21':norm_21, 'norm_31':norm_31, 'norm_41':norm_41,
-              'norm_51':norm_51,  
-              #'nthroot':nthroot,
-              'nthroot_log':nthroot_log,
-             }
-# get more rth roots normalization
-roots = np.linspace(0,1,30)
-rts = {f"nthroot_{rt:.4}": partial(nthroot,  r=rt) for rt in roots}
-# merge the two dictionaries
-techniques = {**rts, **techniques}
+# techniques = {'norm_11': norm_11,
+#               'std_scaler':std_scaler,
+#               'norm_1':norm_1, 'norm_2':norm_2, 'norm_3':norm_3, 'norm_4':norm_4, 
+#               'norm_5':norm_5,'norm_21':norm_21, 'norm_31':norm_31, 'norm_41':norm_41,
+#               'norm_51':norm_51,  
+#               #'nthroot':nthroot,
+#               'nthroot_log':nthroot_log,
+#              }
+# # get more rth roots normalization
+# roots = np.linspace(0,1,30)
+# rts = {f"nthroot_{rt:.4}": partial(nthroot,  r=rt) for rt in roots}
+# rts_min_max = {f"nthroot_mm{rt:.4}": partial(nthroot_min_max,  r=rt) for rt in roots}
+# # merge the two dictionaries
+# techniques = {**rts, **techniques, **rts_min_max}
 
-# store names of the normalized csv files in
-norm_data_names = []
-for num, technique in enumerate(techniques):
-    star_blend_norm = pd.DataFrame({})
-    for idx, row in tqdm(star_blend.iterrows(), total=star_blend.shape[0], desc='Technique '+ str(num+1), leave=True):
-        # Separate type and data
-        raw_data = row[1:].values
-        obj_id = row[:1].values 
 
-        # Run raw data through each normalization technique
-        norm_data = techniques[technique](raw_data)
+# # store names of the normalized csv files in
+# norm_data_names = []
+# for num, technique in enumerate(techniques):
+#     star_blend_norm = pd.DataFrame({})
+#     for idx, row in tqdm(star_blend.iterrows(), total=star_blend.shape[0], desc='Technique '+ str(num+1), leave=True):
+#         # Separate type and data
+#         raw_data = row[1:].values
+#         obj_id = row[:1].values 
 
-        # Append values for current cutout to dataframe
-        # star_blend_norm = star_blend_norm.append([np.append(obj_id, norm_data)], ignore_index=True)
-        star_blend_norm = pd.concat([star_blend_norm, pd.DataFrame([np.append(obj_id, norm_data)])], ignore_index=True)
+#         # Run raw data through each normalization technique
+#         norm_data = techniques[technique](raw_data)
 
-    # Append plot data for first 5 images
-    plot_data = pd.concat([plot_data, pd.DataFrame({technique: star_blend_norm[:5].to_numpy().flatten()})], axis=1)
+#         # Append values for current cutout to dataframe
+#         # star_blend_norm = star_blend_norm.append([np.append(obj_id, norm_data)], ignore_index=True)
+#         star_blend_norm = pd.concat([star_blend_norm, pd.DataFrame([np.append(obj_id, norm_data)])], ignore_index=True)
 
-    # Save to .csv
-    if max_all == 'yes':
-        star_blend_norm.to_csv('./data-norm/max-pixel-all/' + technique + '.csv', header=False, index=False)
-        norm_data_names.append('./data-norm/max-pixel-all/' + technique + '.csv')
-    else:
-        star_blend_norm.to_csv('./data-norm/max-only/' + technique + '.csv', header=False, index=False)
-        norm_data_names.append('./data-norm/max-only/' + technique + '.csv')
+#     # Append plot data for first 5 images
+#     plot_data = pd.concat([plot_data, pd.DataFrame({technique: star_blend_norm[:5].to_numpy().flatten()})], axis=1)
 
-t_end = perf_counter()
-print(f"Total time for normalization is {(t_end - t_start)/60} minutes")
+#     # Save to .csv
+#     if max_all == 'yes':
+#         star_blend_norm.to_csv('./data-norm/max-pixel-all/' + technique + '.csv', header=False, index=False)
+#         norm_data_names.append('./data-norm/max-pixel-all/' + technique + '.csv')
+#     else:
+#         star_blend_norm.to_csv('./data-norm/max-only/' + technique + '.csv', header=False, index=False)
+#         norm_data_names.append('./data-norm/max-only/' + technique + '.csv')
+
+# t_end = perf_counter()
+# print(f"Total time for normalization is {(t_end - t_start)/60} minutes")
