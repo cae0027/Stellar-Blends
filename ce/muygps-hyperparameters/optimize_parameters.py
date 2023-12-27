@@ -8,6 +8,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
+from sklearn.decomposition import PCA
 
 from MuyGPyS.examples.classify import do_classify
 from MuyGPyS.gp.deformation import F2, Isotropy, l2
@@ -20,17 +21,32 @@ from time import perf_counter
 from MuyGPyS.optimize.loss import mse_fn, lool_fn, pseudo_huber_fn, looph_fn
 import umap
 import pickle
+from glob import glob
 
 
 # data_path = ['norm_11.csv','norm_1.csv', 'norm_21.csv', 'raw_image_data.csv']
-data_path = [ 'norm_21.csv', 'raw_image_data.csv','nthroot_mm0.3103.csv','nthroot_mm0.3793.csv', 'nthroot_mm0.4138.csv']
-# get rid of "../data/data-norm/"
-norm_data_names = data_path
-norm_data_names
+# data_path = [ 'norm_21.csv', 'raw_image_data.csv','nthroot_mm0.3103.csv','nthroot_mm0.3793.csv', 'nthroot_mm0.4138.csv']
+data_path = glob('../../data/data-norm/max-only-best/*.csv')
+norm_data_names = [name.split('/')[-1] for name in data_path] 
 
+def choose_components():
+    """
+    Fixed number of components for each data set, initially defined based on the fact that the number of components have been optimized for these data sets for UMAP embedding
+    """
+    if data_label == 'norm_21':
+            return 31
+    elif data_label == 'raw_image_data':
+        return 8
+    elif data_label == 'nthroot_mm03103':
+        return 4
+    elif data_label == 'nthroot_mm03793':
+        return 37
+    elif data_label == 'nthroot_mm04138':
+        return 8
+    return 2
 
-def load_data(path,embedding=False):
-    path1 = '../../data/data-norm/max-only/' + path
+def load_data(path,embedding, rand_ncomponents=False):
+    path1 = '../../data/data-norm/max-only-best/' + path
     data = pd.read_csv(path1,na_values='-')
     data.fillna(0,inplace=True)
     data_label = ''.join(path.split('.')[:-1])
@@ -38,14 +54,29 @@ def load_data(path,embedding=False):
     image_data = data.iloc[:, 1:].values
     # split data into train and test
     X_train, X_test, y_train, y_test = train_test_split(image_data, truth_labels, test_size=0.2, random_state=42)
-    # don't want to embed every time, so only do it 25% of the time
-    choice = random.choice([embedding, 1,2,3])
+    embed_type = 'none' # indicates no embedding
+    n = 0   # indicates no embedding
+    # don't want to embed every time, so only do it 50% of the time
+    choice = random.choice([embedding, 1])
     if choice==embedding:
         # embed data using umap
-        umapped = umap.UMAP(n_components=10).fit(X_train, y_train)
-        X_train = umapped.transform(X_train)
-        X_test = umapped.transform(X_test)
-    return X_train, X_test, y_train, y_test, data_label, choice
+        # choose different number of components for different data
+        if rand_ncomponents:
+            n = random.choice(np.arange(2, 100))
+        else:
+            n = choose_components()
+        # include PCA embedding, so make a choice between PCA and UMAP
+        if random.choice([True, False]):
+            pca = PCA(n_components=n)
+            X_train = pca.fit_transform(X_train)
+            X_test = pca.transform(X_test)
+            embed_type = 'pca'
+        else:
+            umapped = umap.UMAP(n_components=n).fit(X_train, y_train)
+            X_train = umapped.transform(X_train)
+            X_test = umapped.transform(X_test)
+            embed_type = 'umap'
+    return X_train, X_test, y_train, y_test, data_label, choice, n, embed_type
 
 
 def generate_onehot_value(values):
@@ -96,22 +127,26 @@ nn_methods = [nn_kwargs_exact, nn_kwargs_hnsw]
 metrics = [l2, F2]
 # string names for metrics
 metric_names = ['l2', 'F2']
-length_scales = np.linspace(1e-2, 1e2, 50)
+# explore two different ranges for length scales
+length_scales = np.linspace(1e-2, 1e2, 50) if random.choice([True, False]) \
+      else np.linspace(1e-2, 1, 50)
 smoothnesses = np.linspace(1e-2, 1, 50) # for Matern kernel only
-homosc_noise = np.linspace(1e-7, 1e2, 50)
-embedding = True   # umap embedding since it's independent of the components
+# explore two different ranges for homoscedastic noise
+homosc_noise = np.linspace(1e-7, 1e0, 50) if random.choice([True, False]) \
+        else np.linspace(1e0, 1e2, 50)
+embedding = 'embed'   # umap embedding since it's independent of the components
 batch_counts = [ 5,10,20,40,80,160,320,640]
 nn_counts = [5, 10, 15, 20,25,30,35,40 ]
 
 
 # number of random runs for hyperparameter optimization
-n = 5000
-accuracies = {'Length Scale': [], 'Batch Count': [], 'NN Count': [], 'Accuracy': [], 'Loss': [], 'Time': [], 'Kernel': [], 'NN Method': [], 'Metric': [], 'Smoothness': [], 'Homoscedastic Noise': [], 'Embedding': [], 'Data': [], 'Optimizer': []}
+m = 10
+accuracies = {'Length Scale': [], 'Batch Count': [], 'NN Count': [], 'Accuracy': [], 'Loss': [], 'Time': [], 'Kernel': [], 'NN Method': [], 'Metric': [], 'Smoothness': [], 'Homoscedastic Noise': [], 'Embedding': [], 'Numb-comps':[], 'Data': [], 'Optimizer': []}
 
-for _ in tqdm(range(n)):
+for _ in tqdm(range(m)):
     for path in norm_data_names:
             # load data
-            X_train, X_test, y_train, y_test, data_label, choice = load_data(path, embedding=embedding)
+            X_train, X_test, y_train, y_test, data_label, choice, n, embed_type = load_data(path, embedding, rand_ncomponents=True)
             # get random hyperparameters
             loss_idx = random.choice(range(len(loss_funcs)))
             loss = loss_funcs[loss_idx]
@@ -126,22 +161,6 @@ for _ in tqdm(range(n)):
             hn = random.choice(homosc_noise)
             batch = random.choice(batch_counts)
             nn = random.choice(nn_counts)
-            # update accuracies dictionary
-            accuracies['Length Scale'].append(ls)
-            accuracies['Batch Count'].append(batch)
-            accuracies['NN Count'].append(nn)
-            accuracies['Loss'].append(loss_names[loss_idx])
-            # accuracies['Time'].append(perf_counter())
-            accuracies['Kernel'].append(kernel)
-            accuracies['NN Method'].append(nn_method['nn_method'])
-            accuracies['Metric'].append(metric_names[metric_idx])
-            accuracies['Smoothness'].append(smoothness)
-            accuracies['Homoscedastic Noise'].append(hn)
-            accuracies['Embedding'].append('umap' if (choice==embedding) else 'none')
-            accuracies['Data'].append(data_label)
-            accuracies['Optimizer'].append(opt_names[optimizer_idx])
-
-
             # update k_kwargs
             k_kwargs = choose_kernel(kernel, metric, ls, hn, smoothness)
 
@@ -171,10 +190,26 @@ for _ in tqdm(range(n)):
                                             verbose=False
                                             )
             end = perf_counter()
-            accuracies['Time'].append(end-start)
             predicted_labels = np.argmax(surrogate_predictions, axis=1)
             accur = np.around((np.sum(predicted_labels == np.argmax(test["output"], axis=1))/len(predicted_labels))*100, 3),
+
+            # update accuracies dictionary
+            accuracies['Time'].append(end-start)
+            accuracies['Length Scale'].append(ls)
+            accuracies['Batch Count'].append(batch)
+            accuracies['NN Count'].append(nn)
+            accuracies['Loss'].append(loss_names[loss_idx])
+            accuracies['Kernel'].append(kernel)
+            accuracies['NN Method'].append(nn_method['nn_method'])
+            accuracies['Metric'].append(metric_names[metric_idx])
+            accuracies['Smoothness'].append(smoothness)
+            accuracies['Homoscedastic Noise'].append(hn)
+            accuracies['Embedding'].append(embed_type)
+            accuracies['Numb-comps'].append(n)
+            accuracies['Data'].append(data_label)
+            accuracies['Optimizer'].append(opt_names[optimizer_idx])
             accuracies['Accuracy'].append(accur[0])
+
             print("Total accuracy for", data_label, ":", accur[0], '%')
             print("=====================================================")
         # save accuracies to csv
@@ -182,14 +217,14 @@ for _ in tqdm(range(n)):
     # load the previous results and merge with the new results
     # be sure to check if the previous results file exists first
     try:
-        with open('accuracies-over-all-hyperparameters.pkl', 'rb') as f:
+        with open('accuracies-over-all-hyperparameters-pca-umap.pkl', 'rb') as f:
             df_old = pickle.load(f)
         df = pd.concat([df_old, df_new], ignore_index=True)
         # pickle dump the results while model is running
-        with open('accuracies-over-all-hyperparameters.pkl', 'wb') as f:
+        with open('accuracies-over-all-hyperparameters-pca-umap.pkl', 'wb') as f:
             pickle.dump(df, f)
     except:
-        with open('accuracies-over-all-hyperparameters.pkl', 'wb') as f:
+        with open('accuracies-over-all-hyperparameters-pca-umap.pkl', 'wb') as f:
             pickle.dump(df_new, f)
 
 
