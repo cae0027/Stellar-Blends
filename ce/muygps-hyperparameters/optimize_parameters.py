@@ -191,7 +191,7 @@ for _ in tqdm(range(m)):
                                             )
             end = perf_counter()
             predicted_labels = np.argmax(surrogate_predictions, axis=1)
-            accur = np.around((np.sum(predicted_labels == np.argmax(test["output"], axis=1))/len(predicted_labels))*100, 3),
+            accur = np.around((np.sum(predicted_labels == np.argmax(test["output"], axis=1))/len(predicted_labels))*100, 3)
 
             # update accuracies dictionary
             accuracies['Time'].append(end-start)
@@ -208,9 +208,9 @@ for _ in tqdm(range(m)):
             accuracies['Numb-comps'].append(n)
             accuracies['Data'].append(data_label)
             accuracies['Optimizer'].append(opt_names[optimizer_idx])
-            accuracies['Accuracy'].append(accur[0])
+            accuracies['Accuracy'].append(accur)
 
-            print("Total accuracy for", data_label, ":", accur[0], '%')
+            print("Total accuracy for", data_label, ":", accur, '%')
             print("=====================================================")
         # save accuracies to csv
     df_new = pd.DataFrame(accuracies)
