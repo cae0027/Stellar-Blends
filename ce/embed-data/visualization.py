@@ -8,12 +8,13 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import umap
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from time import perf_counter
 
 
 # Read csv file with the labels and image data
-data_path = '../data/data-norm/max-only/raw_image_data.csv'
+# data_path = '../data/data-norm/max-only/nthroot_0.2069.csv'
+# data_path = '../data/data-norm/max-only/raw_image_data.csv'
+data_path = '../data/data-norm/max-only/norm_11.csv'
 def embedding(data_path=data_path, pltt=False):
     now = perf_counter()
     data = pd.read_csv(data_path)
@@ -57,8 +58,11 @@ def embedding(data_path=data_path, pltt=False):
     # labels for umap
     labels_dict = {'UMAP': label, 'Supervised UMAP-Train': y_train, 'Supervised UMAP-Test': y_test}
 
-
     for i, name in enumerate(results):
+        # rroot_minmax               -0.35, 0.0
+        # log_minmax(norm_11)       -0.25, 0.1
+        # raw data                  -0.23, 0.3
+        axes[0].text(-0.25, 0.1, r'$log_{minmiax}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
         if i < 2:
             sns.scatterplot(x = name[:,0], y = name[:,1], hue = label, legend = 'full', ax=axes[i])
             axes[i].set_title(columns[i])
@@ -67,9 +71,14 @@ def embedding(data_path=data_path, pltt=False):
             axes[i].scatter(name[:, 0], name[:, 1], c=label_u, cmap='Spectral', s=5)
             plt.gca().set_aspect('equal', 'datalim')
             axes[i].set_title(columns[i])
+            
+        # put axes in scientific notations
+        for ax in axes:
+            ax.ticklabel_format(axis='both', style='scientific', scilimits=(0,0))
+    
     data_name = ''.join(data_path.split('/')[-1].split('.')[:2])
-    # plt.savefig('./embed-results/max-only/'+data_name, dpi=500)
-    plt.savefig('./embed-results/max-pixel-all/'+data_name, dpi=500)
+    plt.savefig('./embed-results/max-only/'+data_name+'.png', format='png', dpi=500)
+    # plt.savefig('./embed-results/max-pixel-all/'+data_name+'.pdf', format='pdf', dpi=500)
 
     end = perf_counter()
     print(f"Total time taken for embedding a single data is {(end-now)/60} minutes")
@@ -83,18 +92,18 @@ if __name__ == '__main__':
     from glob import glob
     now = perf_counter()
 
-    # read normalized data csv file names from the data directory
+    # # read normalized data csv file names from the data directory
     # norm_data_names = glob('../data/data-norm/max-only/*.csv')
-    norm_data_names = glob('../data/data-norm/max-pixel-all/*.csv')
-    # sort the names by their numbers
-    norm_data_names.sort(key=lambda x: x.split('_')[1])
+    # # norm_data_names = glob('../data/data-norm/max-pixel-all/*.csv')
+    # # sort the names by their numbers
+    # norm_data_names.sort(key=lambda x: x.split('_')[1])
 
-    for i,name in enumerate(norm_data_names):
-        print(f"Running Iteration {(i+1)}/{len(norm_data_names)} ================> {name}")
-        embedding(data_path=name)
+    # for i,name in enumerate(norm_data_names):
+    #     print(f"Running Iteration {(i+1)}/{len(norm_data_names)} ================> {name.split('/')[-1]}")
+    #     embedding(data_path=name)
 
-    # run single data file embedding
-    # embedding(data_path=data_path)
+    # # run single data file embedding
+    embedding(data_path=data_path, pltt=True)
 
     end = perf_counter()
     print(f"Total time taken for embedding all normalized data is {(end-now)/60} minutes")
