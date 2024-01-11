@@ -1,3 +1,7 @@
+"""
+    Gauge CNN performance with limited training data
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -66,9 +70,14 @@ class CustomDataset(Dataset):
         return img_data, label
 # assign device if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-def train_and_evaluate_model(csv_path, input_nodes, num_layers, nodes_per_layer, num_epochs=100, batch_size=64, lr=0.001, test_size=0.2):
+def train_and_evaluate_model(csv_path, input_nodes, num_layers, nodes_per_layer, num_epochs=100, batch_size=64, lr=0.001, train_size=0.2):
     dataset = CustomDataset(csv_path, transform=transforms.Normalize((0.5,), (0.5,)))
-    train_data, test_data = train_test_split(dataset, test_size=test_size, random_state=42)
+    train_data, test_data = train_test_split(dataset, test_size=0.2, random_state=42)
+    # get given percentage of train data
+    # train_size won't accept 1.0, resort to train size
+    if train_size == 1.0:
+        train_size = int(len(train_data)) - 1   # -1 to avoid empty tensor
+    train_data, _ = train_test_split(train_data, train_size=train_size, random_state=42)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
@@ -113,17 +122,17 @@ if __name__ == "__main__":
     # train_and_evaluate_model(csv_file, input_nodes=10, num_layers=num_layers, nodes_per_layer=nodes_per_layer)
 
     # vary test sizes
-    test_sizes = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6,0.7,0.8]
-    accuracy = {i:[] for i in test_sizes}
-    for test_size in test_sizes:
+    train_sizes = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5,0.4,0.3,0.2,0.1]
+    accuracy = {i:[] for i in train_sizes}
+    for train_size in train_sizes:
         csv_file = '../../data/data-norm/max-only/norm_21.csv'  # the path to your CSV file
         num_layers = 2
         nodes_per_layer = [32,64]
-        accur = train_and_evaluate_model(csv_file, input_nodes=10, num_layers=num_layers, nodes_per_layer=nodes_per_layer, test_size=test_size)
-        accuracy[test_size].append(accur)
+        accur = train_and_evaluate_model(csv_file, input_nodes=10, num_layers=num_layers, nodes_per_layer=nodes_per_layer, train_size=train_size)
+        accuracy[train_size].append(accur*100)
     
     # pickle save accuracy
     import pickle
-    with open('../vary-test-size/CNN-accuracy.pkl', 'wb') as f:
+    with open('../vary-test-size/CNN-accuracy-new.pkl', 'wb') as f:
         pickle.dump(accuracy, f, pickle.HIGHEST_PROTOCOL)
 
