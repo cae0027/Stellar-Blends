@@ -12,9 +12,9 @@ from time import perf_counter
 
 
 # Read csv file with the labels and image data
-# data_path = '../data/data-norm/max-only/nthroot_0.2069.csv'
-# data_path = '../data/data-norm/max-only/raw_image_data.csv'
-data_path = '../data/data-norm/max-only/norm_11.csv'
+data_path = '../../data/data-norm/max-only/nthroot_0.2069.csv'
+# data_path = '../../data/data-norm/max-only/raw_image_data.csv'
+# data_path = '../../data/data-norm/max-only/norm_11.csv'
 def embedding(data_path=data_path, pltt=False):
     now = perf_counter()
     data = pd.read_csv(data_path)
@@ -56,28 +56,38 @@ def embedding(data_path=data_path, pltt=False):
     results = [pca_fit, tsne_fit, umap_fit, sup_umap_train, sup_umap_test]
 
     # labels for umap
-    labels_dict = {'UMAP': label, 'Supervised UMAP-Train': y_train, 'Supervised UMAP-Test': y_test}
+    mylabels = np.array(['star' if x == 1 else 'blend' for x in label])
+    y_train_labels = np.array(['star' if x == 1 else 'blend' for x in y_train])
+    y_test_labels = np.array(['star' if x == 1 else 'blend' for x in y_test])
+    labels_dict = {'UMAP': mylabels, 'Supervised UMAP-Train': y_train_labels, 'Supervised UMAP-Test': y_test_labels}
 
     for i, name in enumerate(results):
         # rroot_minmax               -0.35, 0.0
         # log_minmax(norm_11)       -0.25, 0.1
         # raw data                  -0.23, 0.3
-        axes[0].text(-0.25, 0.1, r'$log_{minmiax}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
+        axes[0].text(-0.3, 0.0, r'root$_{r(minmax)}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
         if i < 2:
-            sns.scatterplot(x = name[:,0], y = name[:,1], hue = label, legend = 'full', ax=axes[i])
+            sns.scatterplot(x = name[:,0], y = name[:,1], hue = mylabels, legend = 'full', ax=axes[i])
             axes[i].set_title(columns[i])
         else:
             label_u = labels_dict[columns[i]]
-            axes[i].scatter(name[:, 0], name[:, 1], c=label_u, cmap='Spectral', s=5)
-            plt.gca().set_aspect('equal', 'datalim')
-            axes[i].set_title(columns[i])
+            # axes[i].scatter(name[:, 0], name[:, 1], c=label_u, cmap='Spectral', s=5)
+            # plt.gca().set_aspect('equal', 'datalim')
+            # axes[i].set_title(columns[i])
+            # separate data based on labels
+            for lbl in np.unique(label_u):
+                indices = np.where(label_u == lbl)
+                axes[i].scatter(name[indices, 0], name[indices, 1], label=lbl, cmap='viridis', s=5)
+                axes[i].set_title(columns[i], fontsize=11.5)
+                axes[i].legend()
+
             
         # put axes in scientific notations
         for ax in axes:
             ax.ticklabel_format(axis='both', style='scientific', scilimits=(0,0))
     
     data_name = ''.join(data_path.split('/')[-1].split('.')[:2])
-    plt.savefig('./embed-results/max-only/'+data_name+'.png', format='png', dpi=500)
+    plt.savefig('../embed-results/max-only/'+data_name+'.png', format='png', dpi=500)
     # plt.savefig('./embed-results/max-pixel-all/'+data_name+'.pdf', format='pdf', dpi=500)
 
     end = perf_counter()
@@ -103,7 +113,7 @@ if __name__ == '__main__':
     #     embedding(data_path=name)
 
     # # run single data file embedding
-    embedding(data_path=data_path, pltt=True)
+    embedding(data_path=data_path, pltt=False)
 
     end = perf_counter()
     print(f"Total time taken for embedding all normalized data is {(end-now)/60} minutes")
