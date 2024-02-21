@@ -65,7 +65,7 @@ def embedding(data_path=data_path, pltt=False):
         # rroot_minmax               -0.35, 0.0
         # log_minmax(norm_11)       -0.25, 0.1
         # raw data                  -0.23, 0.3
-        axes[0].text(-0.3, 0.0, r'root$_{r(minmax)}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
+        axes[0].text(-0.33, 0.0, r'root$_{r(minmax)}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
         if i < 2:
             sns.scatterplot(x = name[:,0], y = name[:,1], hue = mylabels, legend = 'full', ax=axes[i])
             axes[i].set_title(columns[i])

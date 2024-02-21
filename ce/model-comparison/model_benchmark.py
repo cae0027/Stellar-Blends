@@ -19,8 +19,8 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 # from sklearn.inspection import DecisionBoundaryDisplay
 import umap
 
-# path = '../data/data-norm/max-only/'
-path = '../data/data-norm/max-pixel-all/'
+path = '../../data/data-norm/max-only/'
+# path = '../../data/data-norm/max-pixel-all/'
 data_names = glob(path + '*.csv')
 bench_mark_results = {name.split('/')[-1]:[] for name in data_names  }
 for data_name in bench_mark_results:
@@ -43,17 +43,6 @@ for data_name in bench_mark_results:
     "QDA",
     ]
 
-    # KNeighborsClassifier 0.6862043661713447
-    # SVC 0.5730141258484682
-    # SVC 0.7052834342322509
-    # GaussianProcessClassifier
-    # DecisionTreeClassifier 0.6511649238671803
-    # RandomForestClassifier 0.6606127316088791
-    # MLPClassifier 0.6231884057971014
-    # AdaBoostClassifier 0.652357365620987
-    # GaussianNB 0.5719134103834159
-    # QuadraticDiscriminantAnalysis 0.5969546872133553
-
     classifiers = [
         # KNeighborsClassifier(3),
         # KNeighborsClassifier(5),
@@ -63,8 +52,8 @@ for data_name in bench_mark_results:
         # SVC(gamma=2, C=1),
         # SVC(gamma=4, C=1),
         # GaussianProcessClassifier(1.0 * RBF(1.0)),
-        DecisionTreeClassifier(max_depth=5),
-        # RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+        # DecisionTreeClassifier(max_depth=5),
+        RandomForestClassifier(max_depth=40, n_estimators=100, max_features=10),
         # MLPClassifier(alpha=1, max_iter=1000),
         # AdaBoostClassifier(),
         # GaussianNB(),
@@ -96,6 +85,7 @@ for data_name in bench_mark_results:
         print(clf.__class__.__name__, score)
     bench_mark_results[data_name].append(score)
 bench_mark_results = pd.DataFrame(bench_mark_results)
-bench_mark_results.to_csv('bench_mark_results_maxall.csv', index=False)
+bench_mark_results.to_csv('bench_mark_results_max_only.csv', index=False)
+# bench_mark_results.to_csv('bench_mark_results_maxall.csv', index=False)
 
 
