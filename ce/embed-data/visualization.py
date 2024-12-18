@@ -62,12 +62,15 @@ def embedding(data_path=data_path, pltt=False):
     labels_dict = {'UMAP': mylabels, 'Supervised UMAP-Train': y_train_labels, 'Supervised UMAP-Test': y_test_labels}
 
     for i, name in enumerate(results):
-        # rroot_minmax               -0.35, 0.0
-        # log_minmax(norm_11)       -0.25, 0.1
+        # root$_{r(minmax)}$         -0.33, 0.0
+        # $\log_{minmax}$            -0.25, 0.1     (norm_11)
         # raw data                  -0.23, 0.3
         axes[0].text(-0.33, 0.0, r'root$_{r(minmax)}$ data', size=20, verticalalignment='bottom',rotation=90, color='blue', transform=axes[0].transAxes)
         if i < 2:
-            sns.scatterplot(x = name[:,0], y = name[:,1], hue = mylabels, legend = 'full', ax=axes[i])
+            sns.scatterplot(x = name[:,0], y = name[:,1], hue = mylabels, legend = 'full', ax=axes[i],alpha=1.0)
+            # Apply rasterization to remove flickering
+            if axes[i].collections:
+                axes[i].collections[0].set_rasterized(True)
             axes[i].set_title(columns[i])
         else:
             label_u = labels_dict[columns[i]]
@@ -77,18 +80,21 @@ def embedding(data_path=data_path, pltt=False):
             # separate data based on labels
             for lbl in np.unique(label_u):
                 indices = np.where(label_u == lbl)
-                axes[i].scatter(name[indices, 0], name[indices, 1], label=lbl, cmap='viridis', s=5)
+                scatter=axes[i].scatter(name[indices, 0], name[indices, 1], label=lbl, cmap='viridis', s=5, alpha=1.0)
+                # Apply rasterization to the scatter plot
+                scatter.set_rasterized(True)
                 axes[i].set_title(columns[i], fontsize=11.5)
                 axes[i].legend()
 
-            
+
         # put axes in scientific notations
         for ax in axes:
             ax.ticklabel_format(axis='both', style='scientific', scilimits=(0,0))
     
     data_name = ''.join(data_path.split('/')[-1].split('.')[:2])
-    plt.savefig('../embed-results/max-only/'+data_name+'.png', format='png', dpi=500)
-    # plt.savefig('./embed-results/max-pixel-all/'+data_name+'.pdf', format='pdf', dpi=500)
+    # plt.savefig('../embed-results/max-only/'+data_name+'.png', format='png', dpi=500)
+    plt.savefig('../embed-results/max-only/reviews/'+data_name+'.pdf', format='pdf')
+    # plt.savefig('../embed-results/max-pixel-all/'+data_name+'.pdf', format='pdf')
 
     end = perf_counter()
     print(f"Total time taken for embedding a single data is {(end-now)/60} minutes")
